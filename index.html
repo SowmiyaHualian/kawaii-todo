@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Kawaii Tasks 🌸✨</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes slide-in {
+      from { opacity: 0; transform: translateX(-20px) scale(0.95); }
+      to { opacity: 1; transform: translateX(0) scale(1); }
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-20px) rotate(10deg); }
+    }
+    @keyframes bounce-soft {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    @keyframes wiggle {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(-5deg); }
+      75% { transform: rotate(5deg); }
+    }
+    @keyframes drift {
+      0%, 100% { transform: translateX(0px); }
+      50% { transform: translateX(30px); }
+    }
+    .animate-fade-in { animation: fade-in 0.5s ease-out; }
+    .animate-slide-in { animation: slide-in 0.3s ease-out forwards; opacity: 0; }
+    .animate-float { animation: float 3s ease-in-out infinite; }
+    .animate-bounce-soft { animation: bounce-soft 2s ease-in-out infinite; }
+    .animate-wiggle { animation: wiggle 0.5s ease-in-out infinite; }
+    .animate-drift { animation: drift 8s ease-in-out infinite; }
+    * { font-family: cursive; }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-pink-200 via-purple-200 to-blue-200 py-8 px-4 relative overflow-x-hidden">
+  
+  <!-- Floating Elements -->
+  <div class="absolute top-10 left-10 animate-float text-pink-400" style="animation-delay: 0s">⭐</div>
+  <div class="absolute top-32 right-20 animate-float text-red-300" style="animation-delay: 1s">💖</div>
+  <div class="absolute bottom-20 left-1/4 animate-float text-yellow-400" style="animation-delay: 2s">✨</div>
+  <div class="absolute top-1/2 right-10 animate-float text-blue-400" style="animation-delay: 1.5s">⭐</div>
+  <div class="absolute bottom-32 right-1/3 animate-float text-pink-300" style="animation-delay: 0.5s">💖</div>
+  
+  <!-- Background Clouds -->
+  <div class="absolute top-20 left-1/4 w-64 h-32 bg-white/40 rounded-full blur-2xl animate-drift"></div>
+  <div class="absolute bottom-20 right-1/4 w-80 h-40 bg-purple-200/30 rounded-full blur-2xl animate-drift" style="animation-delay: 3s"></div>
+  
+  <div id="app" class="max-w-4xl mx-auto relative z-10"></div>
+
+  <script>
+    // Storage wrapper for localStorage
+    const storage = {
+      get: (key) => {
+        const item = localStorage.getItem(key);
+        return item ? { key, value: item } : null;
+      },
+      set: (key, value) => {
+        localStorage.setItem(key, value);
+        return { key, value };
+      }
+    };
+
+    // App state
+    let todos = [];
+    let dailyStats = {};
+    let input = '';
+    let dueDate = '';
+    let dueTime = '';
+    let filter = 'all';
+
+    // Load data
+    function loadData() {
+      const todosData = storage.get('kawaii-todos');
+      if (todosData) todos = JSON.parse(todosData.value);
+      
+      const statsData = storage.get('kawaii-daily-stats');
+      if (statsData) dailyStats = JSON.parse(statsData.value);
+      
+      render();
+    }
+
+    function saveTodos() {
+      storage.set('kawaii-todos', JSON.stringify(todos));
+      updateDailyStats();
+    }
+
+    function updateDailyStats() {
+      const today = new Date().toDateString();
+      const todayTodos = todos.filter(todo => {
+        const createdDate = new Date(todo.createdAt).toDateString();
+        return createdDate === today;
+      });
+      
+      const completed = todayTodos.filter(t => t.completed).length;
+      const total = todayTodos.length;
+      
+      dailyStats[today] = { completed, total, date: today };
+      storage.set('kawaii-daily-stats', JSON.stringify(dailyStats));
+    }
+
+    function addTodo() {
+      if (input.trim()) {
+        todos.push({
+          id: Date.now(),
+          text: input,
+          completed: false,
+          dueDate: dueDate || null,
+          dueTime: dueTime || null,
+          createdAt: Date.now()
+        });
+        input = '';
+        dueDate = '';
+        dueTime = '';
+        saveTodos();
+        render();
+      }
+    }
+
+    function toggleTodo(id) {
+      todos = todos.map(todo =>
+        todo.id === id ? { ...todo, completed: !todo.completed } : todo
+      );
+      saveTodos();
+      render();
+    }
+
+    function deleteTodo(id) {
+      todos = todos.filter(todo => todo.id !== id);
+      saveTodos();
+      render();
+    }
+
+    function isOverdue(todo) {
+      if (!todo.dueDate || todo.completed) return false;
+      const now = new Date();
+      const dueDateTime = new Date(todo.dueDate);
+      if (todo.dueTime) {
+        const [hours, minutes] = todo.dueTime.split(':');
+        dueDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      } else {
+        dueDateTime.setHours(23, 59, 59, 999);
+      }
+      return dueDateTime < now;
+    }
+
+    function formatDate(dateString) {
+      if (!dateString) return null;
+      const date = new Date(dateString);
+      const today = new Date();
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      if (date.toDateString() === today.toDateString()) return 'Today';
+      if (date.toDateString() === tomorrow.toDateString()) return 'Tomorrow';
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function formatTime(timeString) {
+      if (!timeString) return null;
+      const [hours, minutes] = timeString.split(':');
+      const hour = parseInt(hours);
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const displayHour = hour % 12 || 12;
+      return \\`${displayHour}:${minutes} ${ampm}\`;
+    }
+
+    function getDailyCalendar() {
+      const days = [];
+      const today = new Date();
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        days.push(date);
+      }
+      return days;
+    }
+
+    function getStatsForDate(date) {
+      const dateStr = date.toDateString();
+      return dailyStats[dateStr] || { completed: 0, total: 0 };
+    }
+
+    function render() {
+      const filteredTodos = todos.filter(todo => {
+        if (filter === 'active') return !todo.completed;
+        if (filter === 'completed') return todo.completed;
+        return true;
+      });
+
+      const todayTodos = todos.filter(todo => {
+        const createdDate = new Date(todo.createdAt).toDateString();
+        return createdDate === new Date().toDateString();
+      });
+
+      const activeCount = todos.filter(t => !t.completed).length;
+      const overdueCount = todos.filter(t => isOverdue(t)).length;
+      const completedCount = todos.filter(t => t.completed).length;
+      const progressPercentage = todos.length > 0 ? Math.round((completedCount / todos.length) * 100) : 0;
+      const todayCompletedCount = todayTodos.filter(t => t.completed).length;
+      const todayProgressPercentage = todayTodos.length > 0 ? Math.round((todayCompletedCount / todayTodos.length) * 100) : 0;
+
+      document.getElementById('app').innerHTML = `
+        <div class="text-center mb-8 animate-bounce-soft">
+          <div class="text-6xl mb-4">🌸✨</div>
+          <h1 class="text-5xl font-bold bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 bg-clip-text text-transparent mb-2 drop-shadow-lg">
+            My Kawaii Tasks
+          </h1>
+          <p class="text-purple-600 text-lg font-medium">Let's do our best!</p>
+        </div>
+
+        <div class="bg-white/90 backdrop-blur-md rounded-3xl shadow-2xl p-6 mb-6 border-4 border-pink-300">
+          <div class="space-y-3 mb-6">
+            <div class="relative">
+              <input
+                type="text"
+                id="taskInput"
+                value="${input}"
+                placeholder="What cute task shall we add?"
+                class="w-full px-5 py-4 border-3 border-pink-300 rounded-2xl focus:outline-none focus:ring-4 focus:ring-pink-400/50 focus:border-pink-400 transition-all text-gray-700 bg-pink-50/50"
+              />
+              <span class="absolute right-4 top-1/2 transform -translate-y-1/2 text-pink-400 animate-pulse text-2xl">✨</span>
+            </div>
+            <div class="flex gap-2 flex-wrap">
+              <div class="flex-1 min-w-[150px] relative">
+                <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-purple-400">📅</span>
+                <input
+                  type="date"
+                  id="dueDateInput"
+                  value="${dueDate}"
+                  class="w-full pl-10 pr-4 py-4 border-3 border-purple-300 rounded-2xl focus:outline-none focus:ring-4 focus:ring-purple-400/50 focus:border-purple-400 transition-all bg-purple-50/50"
+                />
+              </div>
+              <div class="flex-1 min-w-[150px] relative">
+                <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-400">🕐</span>
+                <input
+                  type="time"
+                  id="dueTimeInput"
+                  value="${dueTime}"
+                  class="w-full pl-10 pr-4 py-4 border-3 border-blue-300 rounded-2xl focus:outline-none focus:ring-4 focus:ring-blue-400/50 focus:border-blue-400 transition-all bg-blue-50/50"
+                />
+              </div>
+              <button
+                onclick="addTodo()"
+                class="bg-gradient-to-r from-pink-400 via-purple-400 to-blue-400 text-white px-8 py-4 rounded-2xl hover:from-pink-500 hover:via-purple-500 hover:to-blue-500 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-110 font-bold border-2 border-white"
+              >
+                ➕ Add
+              </button>
+            </div>
+          </div>
+        </div>
+
+        ${(todos.length > 0 || todayTodos.length > 0) ? `
+          <div class="mb-6 space-y-6">
+            <div class="grid md:grid-cols-2 gap-6">
+              ${todos.length > 0 ? `
+                <div class="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border-3 border-purple-300 shadow-lg">
+                  <div class="flex items-center justify-between mb-4">
+                    <span class="text-purple-700 font-bold text-lg">Overall Progress</span>
+                    <span class="text-2xl font-bold bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">${progressPercentage}%</span>
+                  </div>
+                  <div class="flex items-center justify-center gap-6 mb-4">
+                    <svg width="120" height="120" viewBox="0 0 120 120" class="transform -rotate-90">
+                      <circle cx="60" cy="60" r="50" fill="none" stroke="#e9d5ff" stroke-width="10" />
+                      <circle cx="60" cy="60" r="50" fill="none" stroke="url(#gradient1)" stroke-width="10"
+                        stroke-dasharray="${progressPercentage * 3.14} 314" stroke-linecap="round" class="transition-all duration-500" />
+                      <defs>
+                        <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stop-color="#f472b6" />
+                          <stop offset="50%" stop-color="#a855f7" />
+                          <stop offset="100%" stop-color="#60a5fa" />
+                        </linearGradient>
+                      </defs>
+                    </svg>
+                    <div class="text-center">
+                      <div class="text-4xl mb-1">${progressPercentage === 100 ? '🎉' : progressPercentage >= 75 ? '⭐' : progressPercentage >= 50 ? '💪' : '✨'}</div>
+                      <div class="text-2xl font-bold bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">${completedCount}/${todos.length}</div>
+                      <div class="text-xs text-purple-600 font-medium">all time</div>
+                    </div>
+                  </div>
+                </div>
+              ` : ''}
+              
+              ${todayTodos.length > 0 ? `
+                <div class="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border-3 border-pink-300 shadow-lg">
+                  <div class="flex items-center justify-between mb-4">
+                    <span class="text-pink-700 font-bold text-lg">Today's Progress</span>
+                    <span class="text-2xl font-bold bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">${todayProgressPercentage}%</span>
+                  </div>
+                  <div class="flex items-center justify-center gap-6 mb-4">
+                    <svg width="120" height="120" viewBox="0 0 120 120" class="transform -rotate-90">
+                      <circle cx="60" cy="60" r="50" fill="none" stroke="#fce7f3" stroke-width="10" />
+                      <circle cx="60" cy="60" r="50" fill="none" stroke="url(#gradient2)" stroke-width="10"
+                        stroke-dasharray="${todayProgressPercentage * 3.14} 314" stroke-linecap="round" class="transition-all duration-500" />
+                      <defs>
+                        <linearGradient id="gradient2" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stop-color="#ec4899" />
+                          <stop offset="100%" stop-color="#f472b6" />
+                        </linearGradient>
+                      </defs>
+                    </svg>
+                    <div class="text-center">
+                      <div class="text-4xl mb-1">${todayProgressPercentage === 100 ? '🎊' : todayProgressPercentage >= 50 ? '🌟' : '🌸'}</div>
+                      <div class="text-2xl font-bold bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">${todayCompletedCount}/${todayTodos.length}</div>
+                      <div class="text-xs text-pink-600 font-medium">today</div>
+                    </div>
+                  </div>
+                </div>
+              ` : ''}
+            </div>
+
+            <div class="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border-3 border-blue-300 shadow-lg">
+              <h2 class="text-xl font-bold text-blue-700 mb-4 text-center">Weekly Progress 📊</h2>
+              <div class="flex gap-2 justify-between items-end">
+                ${getDailyCalendar().map(date => {
+                  const stats = getStatsForDate(date);
+                  const percentage = stats.total > 0 ? (stats.completed / stats.total) * 100 : 0;
+                  const isToday = date.toDateString() === new Date().toDateString();
+                  return `
+                    <div class="flex-1 flex flex-col items-center gap-2">
+                      <div class="text-xs font-bold text-gray-600">${date.toLocaleDateString('en-US', { weekday: 'short' })}</div>
+                      <div class="w-full rounded-t-xl transition-all duration-500 ${
+                        isToday ? 'bg-gradient-to-t from-pink-400 to-purple-400 border-2 border-pink-500' : 
+                        percentage === 100 ? 'bg-gradient-to-t from-green-300 to-green-400' :
+                        percentage > 0 ? 'bg-gradient-to-t from-blue-300 to-blue-400' : 'bg-gray-200'
+                      }" style="height: ${Math.max(percentage, 10)}px; max-height: 120px"></div>
+                      <div class="text-xs font-bold">${stats.total > 0 ? \\`${stats.completed}/${stats.total}\` : '-'}</div>
+                      ${percentage === 100 && stats.total > 0 ? '<div class="text-lg">✓</div>' : ''}
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          </div>
+        ` : ''}
+
+        <div class="bg-white/90 backdrop-blur-md rounded-3xl shadow-2xl p-6 mb-6 border-4 border-pink-300">
+          <div class="flex gap-2 mb-4 flex-wrap">
+            <button onclick="filter='all'; render()" class="px-5 py-3 rounded-2xl transition-all duration-300 transform hover:scale-105 font-bold border-2 ${filter === 'all' ? 'bg-gradient-to-r from-pink-400 to-purple-400 text-white shadow-lg border-white' : 'bg-pink-100 text-pink-700 hover:bg-pink-200 border-pink-300'}">
+              All (${todos.length})
+            </button>
+            <button onclick="filter='active'; render()" class="px-5 py-3 rounded-2xl transition-all duration-300 transform hover:scale-105 font-bold border-2 ${filter === 'active' ? 'bg-gradient-to-r from-purple-400 to-blue-400 text-white shadow-lg border-white' : 'bg-purple-100 text-purple-700 hover:bg-purple-200 border-purple-300'}">
+              Active (${activeCount})
+            </button>
+            <button onclick="filter='completed'; render()" class="px-5 py-3 rounded-2xl transition-all duration-300 transform hover:scale-105 font-bold border-2 ${filter === 'completed' ? 'bg-gradient-to-r from-blue-400 to-green-400 text-white shadow-lg border-white' : 'bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-300'}">
+              Done (${completedCount})
+            </button>
+            ${overdueCount > 0 ? `<div class="px-5 py-3 rounded-2xl bg-red-200 text-red-700 flex items-center gap-2 animate-wiggle font-bold border-2 border-red-400">⚠️ ${overdueCount} Overdue</div>` : ''}
+          </div>
+
+          <div class="space-y-3">
+            ${filteredTodos.length === 0 ? `
+              <div class="text-center py-12 animate-fade-in">
+                <div class="text-8xl mb-4 animate-bounce-soft">🎀</div>
+                <p class="text-purple-400 text-xl font-bold">No tasks yet! So kawaii and free~</p>
+              </div>
+            ` : filteredTodos.map((todo, index) => `
+              <div class="flex items-center gap-3 p-4 rounded-2xl transition-all duration-300 transform hover:scale-[1.03] hover:shadow-lg animate-slide-in border-3 ${
+                isOverdue(todo) ? 'bg-gradient-to-r from-red-100 to-pink-100 border-red-300 shadow-red-200' :
+                todo.completed ? 'bg-gradient-to-r from-green-100 to-blue-100 border-green-300 shadow-green-200' :
+                'bg-gradient-to-r from-pink-50 via-purple-50 to-blue-50 border-pink-300 shadow-pink-200'
+              }" style="animation-delay: ${index * 0.05}s">
+                <button onclick="toggleTodo(${todo.id})" class="w-8 h-8 rounded-full border-3 flex items-center justify-center transition-all duration-300 transform hover:scale-125 hover:rotate-12 ${
+                  todo.completed ? 'bg-gradient-to-r from-green-300 to-blue-300 border-green-400 shadow-lg' :
+                  'bg-white border-pink-400 hover:border-purple-500 hover:shadow-md'
+                }">
+                  ${todo.completed ? '<span class="text-white font-bold text-lg">✓</span>' : ''}
+                </button>
+                <div class="flex-1">
+                  <span class="block transition-all duration-300 font-medium text-lg ${todo.completed ? 'line-through text-gray-400' : 'text-gray-700'}">
+                    ${todo.text}${todo.completed ? ' ✓' : ''}
+                  </span>
+                  ${(todo.dueDate || todo.dueTime) ? `
+                    <div class="flex items-center gap-2 text-sm mt-1 font-medium flex-wrap ${isOverdue(todo) ? 'text-red-600' : 'text-purple-600'}">
+                      ${todo.dueDate ? `<div class="flex items-center gap-1">📅 <span>${formatDate(todo.dueDate)}</span></div>` : ''}
+                      ${todo.dueTime ? `<div class="flex items-center gap-1">🕐 <span>${formatTime(todo.dueTime)}</span></div>` : ''}
+                      ${isOverdue(todo) ? '<span class="ml-1">⚠️ Overdue!</span>' : ''}
+                    </div>
+                  ` : ''}
+                </div>
+                <button onclick="deleteTodo(${todo.id})" class="text-red-400 hover:text-red-600 transition-all duration-300 transform hover:scale-125 hover:rotate-180 p-2 bg-red-100 rounded-full border-2 border-red-300 hover:bg-red-200">
+                  ✕
+                </button>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <div class="text-center text-purple-600 font-bold animate-pulse">You can do it! ✨</div>
+      `;
+
+      // Add event listeners
+      document.getElementById('taskInput').addEventListener('input', (e) => {
+        input = e.target.value;
+      });
+      document.getElementById('taskInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') addTodo();
+      });
+      document.getElementById('dueDateInput').addEventListener('input', (e) => {
+        dueDate = e.target.value;
+      });
+      document.getElementById('dueTimeInput').addEventListener('input', (e) => {
+        dueTime = e.target.value;
+      });
+    }
+
+    // Initialize
+    loadData();
+  </script>
+</body>
+</html>
